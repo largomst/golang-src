@@ -18,17 +18,26 @@ func main() {
 		"https://graph.microsoft.com",
 	}
 
-	for _, api := range apis {
-		_, err := http.Get(api)
-		if err != nil {
-			fmt.Printf("ERROR: %s is down!\n", api)
-			continue
-		} else {
-			fmt.Printf("SUCCESS: %s is up and running!\n", api)
-		}
+	ch := make(chan string)
 
+	for _, api := range apis {
+		go checkAPI(api, ch)
+	}
+
+	for i := 0; i < len(apis); i++ {
+		fmt.Printf(<-ch)
 	}
 
 	elapsed := time.Since(start)
 	fmt.Printf("Done! It took %v seconds!\n", elapsed.Seconds())
+}
+
+func checkAPI(api string, ch chan string) {
+	_, err := http.Get(api)
+	if err != nil {
+		ch <- fmt.Sprintf("ERROR: %s is down\n", api)
+	} else {
+		ch <- fmt.Sprintf("SUCCESS: %s is up and runngin\n", api)
+	}
+	return
 }

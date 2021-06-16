@@ -1,8 +1,8 @@
 package main
 
 import (
+	"account/store"
 	"fmt"
-	"web/store"
 )
 
 func main() {

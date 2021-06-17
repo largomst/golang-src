@@ -1,31 +1,35 @@
 package main
 
-import (
-	"fmt"
-	"math/rand"
-	"time"
-)
+import "fmt"
 
-func fib(number float64) float64 {
-	x, y := 1.0, 1.0
-	for i := 0; i < int(number); i++ {
-		x, y = y, x+y
-	}
-
-	r := rand.Intn(3)
-	time.Sleep(time.Duration(r) * time.Second)
-
-	return x
-}
+var quit = make(chan bool)
 
 func main() {
-	start := time.Now()
+	var command string
+	ch := make(chan int)
 
-	for i := 1; i < 15; i++ {
-		n := fib(float64(i))
-		fmt.Printf("Fib(%v): %v\n", i, n)
+	go fib(ch)
+
+	for {
+		num := <-ch
+		fmt.Print(num)
+		fmt.Scanf("%s", &command)
+		if command == "quit" {
+			quit <- true
+			break
+		}
 	}
+}
 
-	elapsed := time.Since(start)
-	fmt.Printf("Done! It took %v seconds!\n", elapsed.Seconds())
+func fib(ch chan<- int) {
+	x, y := 1, 1
+	for {
+		select {
+		case ch <- x:
+			x, y = y, x+y
+		case <-quit:
+			fmt.Println("Done")
+			break
+		}
+	}
 }

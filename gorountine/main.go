@@ -7,6 +7,30 @@ import (
 )
 
 func main() {
+	ch1 := make(chan string)
+	ch2 := make(chan string)
+	go process(ch1)
+	go replicate(ch2)
+	for i := 0; i < 2; i++ {
+		select {
+		case process := <-ch1:
+			fmt.Println(process)
+		case replicate := <-ch2:
+			fmt.Println(replicate)
+		}
+	}
+}
+
+func process(ch chan string) {
+	time.Sleep(3 * time.Second)
+	ch <- "Done processing"
+}
+func replicate(ch chan string) {
+	time.Sleep(1 * time.Second)
+	ch <- "Done replicating"
+}
+
+func send_and_read() {
 	ch := make(chan string, 1)
 	send(ch, "Hello World")
 	read(ch)

@@ -7,6 +7,12 @@ import (
 )
 
 func main() {
+	ch := make(chan string, 1)
+	send(ch, "Hello World")
+	read(ch)
+}
+
+func request() {
 	start := time.Now()
 
 	apis := []string{
@@ -30,6 +36,7 @@ func main() {
 
 	elapsed := time.Since(start)
 	fmt.Printf("Done! It took %v seconds!\n", elapsed.Seconds())
+
 }
 
 func checkAPI(api string, ch chan string) {
@@ -40,4 +47,15 @@ func checkAPI(api string, ch chan string) {
 		ch <- fmt.Sprintf("SUCCESS: %s is up and runngin\n", api)
 	}
 	return
+}
+
+func send(ch chan<- string, message string) {
+	fmt.Printf("Sending: %#v\n", message)
+	ch <- message
+
+}
+
+func read(ch <-chan string) {
+	fmt.Printf("Read: %#v\n", <-ch)
+
 }

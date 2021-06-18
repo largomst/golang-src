@@ -43,3 +43,15 @@ func (a *Account) Statement() string {
 func Hello() string {
 	return "Hey, I'm working!"
 }
+
+func (a *Account) Transfer(b *Account, amount float64) error {
+	if err := a.Withdraw(amount); err != nil {
+		return err
+	} else {
+		if err := b.Deposit(amount); err != nil {
+			return err
+		} else {
+			return nil
+		}
+	}
+}

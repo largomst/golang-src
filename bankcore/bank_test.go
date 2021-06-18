@@ -1,6 +1,8 @@
 package bank
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestAccount(t *testing.T) {
 	account := Account{
@@ -65,5 +67,32 @@ func TestStatement(t *testing.T) {
 	statement := account.Statement()
 	if statement != "1001 - John - 100" {
 		t.Error("Statement doesn't have the proper format")
+	}
+}
+
+func TestTransfer(t *testing.T) {
+	account1 := Account{
+		Customer: Customer{
+			Name:    "John",
+			Address: "Los Angels, California",
+			Phone:   "(213) 555 0147",
+		},
+		Number:  1001,
+		Balance: 0,
+	}
+	account2 := Account{
+		Customer: Customer{
+			Name:    "Doe",
+			Address: "Shanghai, China",
+			Phone:   "(+86) 177 9871 3781",
+		},
+		Number:  1002,
+		Balance: 0,
+	}
+
+	account1.Deposit(100)
+	err := account1.Transfer(&account2, 50)
+	if account1.Balance != 50 || account2.Balance != 50 {
+		t.Error("Transfer not work", err)
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sync"
+	"time"
 )
 
 func main() {
@@ -307,6 +309,225 @@ func main() {
 		fmt.Printf("%#v %T\n", v, v)
 	}
 
+	// goroutine
+	gof("direct") // 同步
+
+	go gof("goroutine") // 异步
+
+	go func(msg string) {
+		fmt.Println(msg)
+	}("going")
+
+	time.Sleep(time.Second)
+	fmt.Println("done")
+
+	// channels
+	message := make(chan string)
+	go func() {
+		message <- "ping"
+	}()
+	msg := <-message
+	fmt.Println(msg)
+
+	// channels buffer
+	message2 := make(chan string, 2)
+
+	message2 <- "a"
+	message2 <- "b"
+
+	fmt.Println(<-message2)
+	fmt.Println(<-message2)
+
+	// 使用通道同步
+	done := make(chan bool)
+	go worker(done)
+	<-done
+
+	// 单向通道
+	pings := make(chan string, 1)
+	pongs := make(chan string, 1)
+	ping(pings, "passed message")
+	pong(pings, pongs)
+	fmt.Println(<-pongs)
+
+	// select
+	c2 := make(chan string)
+	c3 := make(chan string)
+
+	go func() {
+		time.Sleep(1 * time.Second)
+		c2 <- "two"
+	}()
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		c3 <- "one"
+	}()
+
+	for i := 0; i < 2; i++ {
+		select {
+		case msg1 := <-c2:
+			fmt.Println("received", msg1)
+		case msg2 := <-c3:
+			fmt.Println("received", msg2)
+		}
+	}
+
+	// 超时处理
+	c4 := make(chan string, 1)
+	go func() {
+		time.Sleep(2 * time.Second)
+		c4 <- "result-1"
+	}()
+	select {
+	case res := <-c4:
+		fmt.Print(res)
+	case <-time.After(1 * time.Second):
+		fmt.Println("timeout 1")
+	}
+
+	// 非阻塞的通道操作
+	c5 := make(chan int)
+	select {
+	case msg := <-c5:
+		fmt.Println(msg)
+	default:
+		fmt.Println("no message")
+	}
+
+	// 关闭通道
+
+	jobs := make(chan int, 5)
+	done1 := make(chan bool)
+	go func() {
+		for {
+			j, more := <-jobs
+			fmt.Println(more)
+			if more {
+				fmt.Println("received job", j)
+			} else {
+				fmt.Println("received job done")
+				done1 <- true
+				return
+			}
+		}
+	}()
+
+	for j := 1; j <= 3; j++ {
+		jobs <- j
+		fmt.Println("sent job", j)
+	}
+	close(jobs)
+	fmt.Println("sent all job")
+	<-done1
+
+	// 通道遍历
+	queue := make(chan string, 2)
+	queue <- "one"
+	queue <- "two"
+	close(queue)
+
+	for elem := range queue {
+		fmt.Println(elem)
+	}
+
+	// Timer
+	fmt.Println("timer 1 start")
+	timer1 := time.NewTimer(2 * time.Second)
+	<-timer1.C
+	fmt.Println("timer 1 fired")
+
+	fmt.Println("timer 2 start")
+	timer2 := time.NewTimer(time.Second)
+	go func() {
+		<-timer2.C
+		fmt.Println("timer 2 fired")
+	}()
+	stop2 := timer2.Stop()
+	if stop2 {
+		fmt.Println("timer 2 stopped")
+	}
+	time.Sleep(2 * time.Second)
+
+	// Ticker
+	ticker := time.NewTicker(500 * time.Millisecond)
+	done3 := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-done3:
+				return
+			case t := <-ticker.C:
+				fmt.Println("Tick at", t)
+			}
+		}
+	}()
+	time.Sleep(1600 * time.Millisecond)
+	ticker.Stop()
+	done3 <- true
+	fmt.Println("Ticker stopped")
+
+	// 工作池
+	done4 := make(chan bool)
+	go func() {
+		const numJobs = 5
+		jobs := make(chan int, numJobs)
+		results := make(chan int, numJobs)
+		for w := 1; w <= 3; w++ {
+			go func(id int, jobs <-chan int, results chan<- int) {
+				for j := range jobs {
+					fmt.Println("worker", id, "start job")
+					time.Sleep(time.Second)
+					fmt.Println("worker", id, "finished job")
+					results <- j * 2
+				}
+			}(w, jobs, results)
+		}
+		for j := 1; j <= numJobs; j++ {
+			jobs <- j
+		}
+		for a := 1; a <= numJobs; a++ {
+			<-results
+		}
+		done4 <- true
+	}()
+	<-done4
+
+	// waitGroup
+	wg := sync.WaitGroup{}
+	for i := 1; i <= 5; i++ {
+		wg.Add(1)
+		go worker2(i, &wg)
+	}
+	wg.Wait()
+}
+
+func worker2(id int, wg *sync.WaitGroup) {
+	fmt.Println("worker", id, "start job")
+	time.Sleep(time.Second)
+	fmt.Println("worker", id, "finished job")
+	wg.Done()
+}
+
+func pong(pings <-chan string, pongs chan<- string) {
+	msg := <-pings
+	pongs <- msg
+}
+
+func ping(pings chan<- string, msg string) {
+	pings <- msg
+}
+func worker(done chan bool) {
+	fmt.Print("working...")
+	time.Sleep(time.Second)
+	fmt.Println("done")
+	done <- true
+}
+
+func gof(from string) {
+	for i := 0; i < 3; i++ {
+		fmt.Println(from, ":", i)
+	}
 }
 
 type Body struct {

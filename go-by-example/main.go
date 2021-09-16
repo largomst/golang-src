@@ -497,17 +497,74 @@ func main() {
 	wg := sync.WaitGroup{}
 	for i := 1; i <= 5; i++ {
 		wg.Add(1)
-		go worker2(i, &wg)
+		go func(id int, wg *sync.WaitGroup) {
+			defer wg.Done()
+			time.Sleep(time.Second)
+			fmt.Printf("Worker %d done\n", id)
+		}(i, &wg)
 	}
 	wg.Wait()
+
+	requests := make(chan int, 5)
+	for i := 1; i <= 5; i++ {
+		requests <- i
+	}
+	close(requests)
+
+	limiter := time.Tick(200 * time.Millisecond)
+
+	for req := range requests {
+		<-limiter
+		fmt.Println("request", req, time.Now())
+	}
+
+	burstyLimiter := make(chan time.Time, 3)
+	for i := 0; i < 3; i++ {
+		burstyLimiter <- time.Now()
+	}
+	go func() {
+		for t := range time.Tick(200 * time.Millisecond) {
+			burstyLimiter <- t
+		}
+	}()
+	burstyRequests := make(chan int, 5)
+	for i := 1; i <= 5; i++ {
+		burstyRequests <- i
+	}
+	close(burstyRequests)
+	for req := range burstyRequests {
+		<-burstyLimiter
+		fmt.Println("request", req, time.Now())
+	}
+
+	var ops uint64
+	var wg2 sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg2.Add(1)
+		go func() {
+			for c := 0; c < 1000; c++ {
+				// atomic.AddUint64(&ops, 1) //原子操作，避免竞争
+				// ops += 1 //go run -race . 可以查看竞争详情
+			}
+			wg2.Done()
+		}()
+	}
+	wg2.Wait()
+	fmt.Println("ops", ops)
+
 }
 
-func worker2(id int, wg *sync.WaitGroup) {
-	fmt.Println("worker", id, "start job")
-	time.Sleep(time.Second)
-	fmt.Println("worker", id, "finished job")
-	wg.Done()
-}
+type (
+	readOp struct {
+		key  int
+		resp chan int
+	}
+	writeOp struct {
+		key  int
+		val  int
+		resp chan int
+	}
+)
 
 func pong(pings <-chan string, pongs chan<- string) {
 	msg := <-pings

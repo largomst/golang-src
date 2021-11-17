@@ -7,11 +7,11 @@ stat:
 	| ID '=' expr NEWLINE
 	| NEWLINE;
 expr:
-	expr ('*' | '/') expr
-	| expr ('+' | '-') expr
-	| INT
-	| ID
-	| '(' expr ')';
+	expr op = ('*' | '/') expr		# MulDiv
+	| expr op = ('+' | '-') expr	# AddSub
+	| INT							# Number
+	| ID							# ID
+	| '(' expr ')'					# BRACKET;
 
 NEWLINE:
 	'\r'? '\n';
